@@ -1,0 +1,163 @@
+﻿@page "/"
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@inject IHttpClientFactory ClientFactory
+@rendermode InteractiveServer
+
+
+<input @bind="searchText" @bind:after="PerformSearch" @bind:event="oninput"/>
+
+<div class="container">
+
+  <h1 class="fw-light text-center text-lg-start mt-4 mb-0">Thumbnail Gallery</h1>
+
+  <hr class="mt-2 mb-5">
+
+  <div class="row text-center text-lg-start">
+
+@foreach(Token token in filterResult){
+    <div class="col-lg-3 col-md-4 col-6">
+      <a href="@token.ScryUri" class="d-block mb-4 h-100">
+        <button style="background: url(@token.Images?.Normal); height: 100%; width: 100%;background-size: 100%;"/>
+        @* <img class="img-fluid" src="@token.Images?.Normal" alt=""/> *@
+      </a>
+    </div>
+}
+  </div>
+
+</div>
+
+@* <ul>
+    @foreach(Token token in filterResult){
+        <li @key=token.Id>@token.Name</li>
+    }
+</ul> *@
+
+@code {
+    string searchText;
+
+    List<Token> filterResult = [];
+
+    void PerformSearch()
+    {
+    filterResult=[];
+    if(searchText == "") {return;}
+       foreach(Token token in data.Tokens) {
+            if (token.Name.StartsWith(searchText, StringComparison.CurrentCultureIgnoreCase)) {
+                filterResult.Add(token);
+            }
+       }
+    }
+}
+
+
+@code {
+    private Data? data;
+    protected override async Task OnInitializedAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get,
+            "https://api.scryfall.com/cards/search?q=type:token");
+        @* request.Headers.Add("Accept", "application/vnd.github.v3+json");
+        request.Headers.Add("User-Agent", "HttpClientFactory-Sample"); *@
+
+        var client = ClientFactory.CreateClient();
+
+        @* var response = await client.SendAsync(request); *@
+        var response = await client.SendAsync(AssembleRequest("https://api.scryfall.com/cards/search?q=type:toke"));
+
+        if (response.IsSuccessStatusCode)
+        {
+            using var responseStream = await response.Content.ReadAsStreamAsync();
+            data = await JsonSerializer.DeserializeAsync<Data>(responseStream);
+        }
+
+        if(data?.More == true) {
+            
+        }
+    }
+
+    protected async Task GetJson(string req) {
+         @* var request = new HttpRequestMessage(HttpMethod.Get,
+            "https://api.scryfall.com/cards/search?q=type:token");
+        request.Headers.Add("User-Agent", "HttpClientFactory-Sample"); *@
+
+        var client = ClientFactory.CreateClient();
+
+        var response = await client.SendAsync(AssembleRequest("https://api.scryfall.com/cards/search?q=type:toke"));
+
+        if (response.IsSuccessStatusCode)
+        {
+            using var responseStream = await response.Content.ReadAsStreamAsync();
+            data = await JsonSerializer.DeserializeAsync<Data>(responseStream);
+        }
+        @* while(data.More == true) {
+
+        } *@
+    }
+
+    private HttpRequestMessage AssembleRequest(string req) {
+         var request = new HttpRequestMessage(HttpMethod.Get,req);
+        request.Headers.Add("User-Agent", "HttpClientFactory-Sample");
+        return request;
+    } 
+    
+
+    public class Data {
+        [JsonPropertyName("object")]
+        public string? Object { get; set; }
+
+        [JsonPropertyName("total_cards")]
+        public int? NumberOfCards { get; set; }
+
+        [JsonPropertyName("has_more")]
+        public bool? More { get; set; }
+
+        [JsonPropertyName("next_page")]
+        public string? NextPage { get; set; }
+
+        [JsonPropertyName("data")]
+        public Token[]? Tokens { get; set; }
+
+    }
+
+    public class Token
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("oracle_id")]
+        public string? OracleId { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("power")]
+        public string? Power { get; set; }
+
+        [JsonPropertyName("image_uris")]
+        public Images? Images { get; set; }
+
+        [JsonPropertyName("scryfall_uri")]
+        public string? ScryUri { get; set; }
+    }
+
+    public class Images {
+        [JsonPropertyName("small")]
+        public string? Small { get; set; }
+
+        [JsonPropertyName("normal")]
+        public string? Normal { get; set; }
+
+        [JsonPropertyName("large")]
+        public string? Large { get; set; }
+
+        [JsonPropertyName("png")]
+        public string? Png { get; set; }
+
+        [JsonPropertyName("art_crop")]
+        public string? ArtCrop { get; set; }
+
+        [JsonPropertyName("border_crop")]
+        public string? BorderCrop { get; set; }
+    }
+}
